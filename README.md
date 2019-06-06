@@ -5,7 +5,7 @@
 To play:
 
 ```bash
-npm install -g 800
+npm install -g 0x800
 800
 ```
 
