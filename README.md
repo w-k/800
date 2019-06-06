@@ -5,7 +5,8 @@
 To play:
 
 ```bash
-yarn build && node dist/index.js
+npm install -g 800
+800
 ```
 
 **TODO:**
