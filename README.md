@@ -7,3 +7,7 @@ To play:
 ```bash
 yarn build && node dist/index.js
 ```
+
+**TODO:**
+
+- a new number should be added only if user input resulted in a change on the board

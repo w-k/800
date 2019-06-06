@@ -4,9 +4,13 @@ export enum KeyCode {
   Right = "\u001B\u005B\u0043",
   Left = "\u001B\u005B\u0044",
   CtrlC = "\u0003"
-  // Space = "\u0020",
-  // Enter = "\u000D"
 }
+
+export type DirectionKeyCode =
+  | KeyCode.Up
+  | KeyCode.Down
+  | KeyCode.Right
+  | KeyCode.Left;
 
 export enum Key {
   Up = "UP",
