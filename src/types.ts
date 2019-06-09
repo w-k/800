@@ -41,3 +41,14 @@ export const keyToCode: { [key: string]: string } = {
   // [Key.Enter as string]: KeyCode.Enter,
   // [Key.Space as string]: KeyCode.Space
 };
+
+export enum Flag {
+  None = 0,
+  Merged = 1 << 0,
+  Spawned = 1 << 1
+}
+
+export type Cell = {
+  value: number | null;
+  flag: Flag;
+};

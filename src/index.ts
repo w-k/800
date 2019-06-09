@@ -1,7 +1,118 @@
-const readline = require("readline");
-
-import { KeyCode, DirectionKeyCode } from "./types";
+import { KeyCode, DirectionKeyCode, Flag, Cell } from "./types";
+import { diff, Update } from "./diff";
+import tty from "tty";
 import chalk from "chalk";
+
+if (process.stdin.setRawMode) {
+  process.stdin.resume();
+  process.stdin.setRawMode(true);
+  process.stdin.setEncoding("utf8");
+}
+const stdin = process.stdin as tty.WriteStream;
+const stdout = process.stdout as tty.WriteStream;
+
+// const figletMap: { [key: string]: string } = {
+//   "2": `____
+// |___ \
+//   __) |
+//  / __/
+// |_____|
+// `, // 7
+//   "4": `  _  _
+// | || |
+// | || |_
+// |__   _|
+//    |_|
+// `, // 8
+//   "8": `  ___
+//  ( _ )
+//  / _ \
+// | (_) |
+//  \___/
+// `, // 7
+//   "10": ` _  ___
+// / |/ _ \
+// | | | | |
+// | | |_| |
+// |_|\___/
+//  `, // 9
+//   "20": `____   ___
+// |___ \ / _ \
+//   __) | | | |
+//  / __/| |_| |
+// |_____|\___/
+//  `, // 13
+//   "40": `_  _    ___
+// | || |  / _ \
+// | || |_| | | |
+// |__   _| |_| |
+//    |_|  \___/
+//  `, // 14
+//   "80": `  ___   ___
+//  ( _ ) / _ \
+//  / _ \| | | |
+// | (_) | |_| |
+//  \___/ \___/
+// `, // 13
+//   "100": ` _  ___   ___
+// / |/ _ \ / _ \
+// | | | | | | | |
+// | | |_| | |_| |
+// |_|\___/ \___/
+//  `, // 15
+//   "200": `  ____   ___   ___
+//   |___ \ / _ \ / _ \
+//     __) | | | | | | |
+//    / __/| |_| | |_| |
+//   |_____|\___/ \___/
+//  `,
+//   "400": `_  _    ___   ___
+// | || |  / _ \ / _ \
+// | || |_| | | | | | |
+// |__   _| |_| | |_| |
+//    |_|  \___/ \___/
+//  `, // 20
+//   "800": `  ___   ___   ___
+//  ( _ ) / _ \ / _ \
+//  / _ \| | | | | | |
+// | (_) | |_| | |_| |
+//  \___/ \___/ \___/
+// ` // 19
+// };
+
+// const top = "┌──────┐";
+// const bottom = "└──────┘";
+// │
+
+// const n = [
+//   `  ___   ___   ___  `,
+//   ` ( _ ) / _ \\ / _ \\ `,
+//   ` / _ \\| | | | | | |`,
+//   `| (_) | |_| | |_| |`,
+//   ` \\___/ \\___/ \\___/ `
+// ];
+// const t = `┌─────────────────────┐`;
+// const b = `└─────────────────────┘`;
+// const x800 = [
+//   `${t}`,
+//   `│ ${n[0]} │`,
+//   `│ ${n[1]} │`,
+//   `│ ${n[2]} │`,
+//   `│ ${n[3]} │`,
+//   `│ ${n[4]} │`,
+//   `${b}`
+// ];
+
+// const g = [
+//   x800[0].repeat(4),
+//   x800[1].repeat(4),
+//   x800[2].repeat(4),
+//   x800[3].repeat(4),
+//   x800[4].repeat(4),
+//   x800[5].repeat(4),
+//   x800[6].repeat(4)
+// ].join("\n");
+// console.log([g, g, g, g].join("\n"));
 
 const getColor = (value: number | null): string => {
   if (value === null) {
@@ -63,9 +174,11 @@ const mergeTransforms = (textTransforms: TextTransform[]): TextTransform => {
 
 const getBorderStyles = (cell: Cell): ((input: string) => string) => {
   const textTransforms: TextTransform[] = [input => input];
+  // tslint:disable-next-line: no-bitwise
   if (cell.flag & Flag.Spawned) {
     textTransforms.push(chalk.hex(Color.Green));
   }
+  // tslint:disable-next-line: no-bitwise
   if (cell.flag & Flag.Merged) {
     textTransforms.push(chalk.hex(Color.Orange));
   }
@@ -76,77 +189,79 @@ const stringify = (value: number | null) =>
   value === null ? "" : value.toString(16);
 
 const getValueStyles = (cell: Cell): TextTransform => {
-  const textTransforms: TextTransform[] = [];
+  const textTransforms: TextTransform[] = [input => input];
   const initialValueLength = stringify(cell.value).length;
   textTransforms.push(chalk.hex(getColor(cell.value)));
-  // let format = (input: string) => chalk.hex(getColor(cell.value))(input);
+  // tslint:disable-next-line: no-bitwise
+  if (cell.flag & Flag.Merged) {
+    textTransforms.push(chalk.bold);
+  }
   textTransforms.push(value => value + " ".repeat(4 - initialValueLength));
   return mergeTransforms(textTransforms);
 };
 
-const getCellStyles = (_cell: Cell): ((input: string) => string) => {
-  // if (cell.value && cell.value > 8) {
-  //   return input => chalk.bgHex(getColor(cell.value && cell.value * 2))(input);
-  // }
+const getCellStyles = (cell: Cell): ((input: string) => string) => {
+  if (cell.value && cell.value > 8) {
+    return input => chalk.bgHex(getColor(cell.value && cell.value * 2))(input);
+  }
   return input => input;
 };
 
-const writeLine = (cells: Cell[]) => {
-  const borderStyles: Array<(input: string) => string> = cells.map(cell =>
-    getBorderStyles(cell)
-  );
-  const valueStyles: Array<(input: string) => string> = cells.map(cell =>
-    getValueStyles(cell)
-  );
-  const cellStyles: Array<(input: string) => string> = cells.map(cell =>
-    getCellStyles(cell)
-  );
-  return (
-    cellStyles[0](borderStyles[0](top)) +
-    cellStyles[1](borderStyles[1](top)) +
-    cellStyles[2](borderStyles[2](top)) +
-    cellStyles[3](borderStyles[3](top)) +
-    cellStyles[0](
-      borderStyles[0]("\n│ ") +
-        valueStyles[0](stringify(cells[0].value)) +
-        borderStyles[0](" │")
-    ) +
-    cellStyles[1](
-      borderStyles[1]("│ ") +
-        valueStyles[1](stringify(cells[1].value)) +
-        borderStyles[1](" │")
-    ) +
-    cellStyles[2](
-      borderStyles[2]("│ ") +
-        valueStyles[2](stringify(cells[2].value)) +
-        borderStyles[2](" │")
-    ) +
-    cellStyles[3](
-      borderStyles[3]("│ ") +
-        valueStyles[3](stringify(cells[3].value)) +
-        borderStyles[3](" │\n")
-    ) +
-    cellStyles[0](borderStyles[0](bottom)) +
-    cellStyles[1](borderStyles[1](bottom)) +
-    cellStyles[2](borderStyles[2](bottom)) +
-    cellStyles[3](borderStyles[3](bottom))
-  );
+const getCellLines = (cell: Cell): string[] => {
+  const borderStyles = getBorderStyles(cell);
+  const valueStyles = getValueStyles(cell);
+  const cellStyles = getCellStyles(cell);
+  return [
+    cellStyles(borderStyles(top)),
+    cellStyles(
+      borderStyles("│ ") +
+        valueStyles(stringify(cell.value)) +
+        borderStyles(" │")
+    ),
+    cellStyles(borderStyles(bottom))
+  ];
 };
 
-const render = (cells: Cell[][]) =>
-  `${writeLine(cells[0])}\n${writeLine(cells[1])}\n${writeLine(
-    cells[2]
-  )}\n${writeLine(cells[3])}\n`;
+const renderLine = (cells: Cell[]): string[] => {
+  const allCellLines = cells.map(cell => getCellLines(cell));
+  const cellHeight = allCellLines[0].length;
+  const gridLines: string[] = [];
+  for (let i = 0; i < cellHeight; i++) {
+    const gridLine = allCellLines.map(oneCellLines => oneCellLines[i]).join("");
+    gridLines.push(gridLine);
+  }
 
-enum Flag {
-  None = 0,
-  Merged = 1 << 0,
-  Spawned = 1 << 1
-}
+  return gridLines;
+};
 
-type Cell = {
-  value: number | null;
-  flag: Flag;
+let renderedLines: string[] = [];
+
+// const padLeft = (input: string, widthWithPadding: number): string => {
+//   return `${" ".repeat(widthWithPadding - input.length)}${input}`;
+// };
+
+const render = (cells: Cell[][]) => {
+  let newLines: string[] = [];
+  cells.forEach(cell => {
+    newLines = [...newLines, ...renderLine(cell)];
+  });
+  if (renderedLines.length === 0) {
+    stdout.cursorTo(0, 0);
+    stdout.clearScreenDown();
+    stdout.write(newLines.join("\n"));
+  } else {
+    applyDiff(diff(renderedLines, newLines));
+    renderedLines = newLines;
+  }
+};
+
+const applyDiff = (updates: Update[][]) => {
+  updates.forEach((lineUpdates, lineIndex) => {
+    lineUpdates.forEach(update => {
+      stdout.cursorTo(update.index, lineIndex);
+      stdout.write(update.value);
+    });
+  });
 };
 
 const emptyCell = () => ({
@@ -200,14 +315,7 @@ const initializeGrid = (): Cell[][] => {
 
 let grid = initializeGrid();
 
-console.log(render(grid));
-
-const { stdin } = process;
-if (stdin.setRawMode) {
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf8");
-}
+render(grid);
 
 stdin.on("data", (keyCode: KeyCode) => {
   switch (keyCode) {
@@ -222,17 +330,11 @@ stdin.on("data", (keyCode: KeyCode) => {
       if (areDifferent(grid, newGrid)) {
         addRandom(newGrid, 1);
         grid = newGrid;
-        replace(render(grid));
+        render(grid);
       }
       return;
   }
 });
-
-const replace = (gridString: string) => {
-  readline.moveCursor(process.stdout, 0, -13);
-  readline.clearScreenDown(process.stdout);
-  console.log(gridString);
-};
 
 const collapse = (cells: Cell[]): Cell[] => {
   const cellsWithValues = cells.filter(x => x.value !== null);
