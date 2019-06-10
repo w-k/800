@@ -8,8 +8,11 @@ if (process.stdin.setRawMode) {
   process.stdin.setRawMode(true);
   process.stdin.setEncoding("utf8");
 }
+
 const stdin = process.stdin as tty.WriteStream;
 const stdout = process.stdout as tty.WriteStream;
+
+stdout.write("\u001B[?25l");
 
 // const figletMap: { [key: string]: string } = {
 //   "2": `____
@@ -253,6 +256,18 @@ const render = (cells: Cell[][]) => {
     applyDiff(diff(renderedLines, newLines));
     renderedLines = newLines;
   }
+  stdout.cursorTo(35, 1);
+  stdout.clearLine(1);
+  stdout.write(`Score: 0x${score.toString(16)} (${score})`);
+};
+
+const onLost = () => {
+  stdout.cursorTo(0, 0);
+  stdout.clearScreenDown();
+  stdout.cursorTo(5, 6);
+  stdout.write("You lost");
+  stdout.cursorTo(5, 7);
+  stdout.write(`Score: 0x${score.toString(16)} (${score})`);
 };
 
 const applyDiff = (updates: Update[][]) => {
@@ -313,13 +328,21 @@ const initializeGrid = (): Cell[][] => {
   return initialGrid;
 };
 
+const calculateScore = (g: Cell[][]): number =>
+  g
+    .map(row => row.reduce((curr, prev) => curr + (prev.value || 0), 0))
+    .reduce((curr, prev) => curr + prev, 0);
+
 let grid = initializeGrid();
+let score = calculateScore(grid);
 
 render(grid);
 
 stdin.on("data", (keyCode: KeyCode) => {
   switch (keyCode) {
     case KeyCode.CtrlC:
+      stdout.cursorTo(0, 0);
+      stdout.clearScreenDown();
       process.exit();
       return;
     case KeyCode.Up:
@@ -330,7 +353,12 @@ stdin.on("data", (keyCode: KeyCode) => {
       if (areDifferent(grid, newGrid)) {
         addRandom(newGrid, 1);
         grid = newGrid;
+        score = calculateScore(grid);
         render(grid);
+      } else {
+        if (getEmptyCells(grid).length === 0) {
+          onLost();
+        }
       }
       return;
   }
