@@ -267,7 +267,7 @@ const onLost = () => {
   stdout.cursorTo(5, 6);
   stdout.write("You lost");
   stdout.cursorTo(5, 7);
-  stdout.write(`Score: 0x${score.toString(16)} (${score})`);
+  stdout.rite(`Score: 0x${score.toString(16)} (${score})`);
 };
 
 const applyDiff = (updates: Update[][]) => {
