@@ -17,7 +17,8 @@
     "removeComments": true,
     "resolveJsonModule": true,
     "strict": true,
-    "lib": ["es2015", "dom"]
+    "lib": ["es2015", "dom"],
+    "types": ["node"]
   },
   "include": ["./src/"],
   "exclude": ["node_modules", "**/*.test.ts"]

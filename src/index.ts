@@ -1,7 +1,7 @@
-import { KeyCode, DirectionKeyCode, Flag, Cell } from "./types";
-import { diff, Update } from "./diff";
-import tty from "tty";
 import chalk from "chalk";
+import tty from "tty";
+import { diff, Update } from "./diff";
+import { Cell, DirectionKeyCode, Flag, KeyCode } from "./types";
 
 if (process.stdin.setRawMode) {
   process.stdin.resume();
@@ -9,7 +9,7 @@ if (process.stdin.setRawMode) {
   process.stdin.setEncoding("utf8");
 }
 
-const stdin = process.stdin as tty.WriteStream;
+const stdin = process.stdin as tty.ReadStream;
 const stdout = process.stdout as tty.WriteStream;
 
 stdout.write("\u001B[?25l");
@@ -267,7 +267,7 @@ const onLost = () => {
   stdout.cursorTo(5, 6);
   stdout.write("You lost");
   stdout.cursorTo(5, 7);
-  stdout.rite(`Score: 0x${score.toString(16)} (${score})`);
+  stdout.write(`Score: 0x${score.toString(16)} (${score})`);
 };
 
 const applyDiff = (updates: Update[][]) => {
