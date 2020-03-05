@@ -3,6 +3,9 @@
   "version": "1.0.2",
   "description": "",
   "main": "index.js",
+  "files": [
+    "bin"
+  ],
   "bin": {
     "800": "./dist/index.js"
   },
