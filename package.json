@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "files": [
-    "bin"
+    "dist"
   ],
   "bin": {
     "800": "./dist/index.js"
